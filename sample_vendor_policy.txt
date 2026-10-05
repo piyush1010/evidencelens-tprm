@@ -1,9 +1,9 @@
 ACME CLOUD SECURITY POLICY — DEMO DOCUMENT
 
 Access control
-ACME Cloud uses role-based access control and least-privilege access. Multi-factor
-authentication is enforced across all corporate and production systems. Access rights
-are reviewed quarterly by the Security team and removed within 24 hours when employment ends.
+ACME Cloud uses role-based access control and least-privilege access. Multi-factor authentication
+(MFA) is enforced across all corporate systems and all production systems. Access rights are
+reviewed quarterly by the Security team and removed within 24 hours when employment ends.
 
 Encryption
 Customer data is encrypted in transit using TLS 1.3 and at rest using
