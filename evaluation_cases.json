@@ -1,0 +1,75 @@
+[
+  {
+    "case_id": "AC-positive",
+    "question_id": "DEMO-AC-01",
+    "evidence": "Multi-factor authentication is enforced across all corporate and production systems.",
+    "expected_answer": "Yes"
+  },
+  {
+    "case_id": "AC-negative",
+    "question_id": "DEMO-AC-01",
+    "evidence": "Multi-factor authentication is not enforced across corporate or production systems.",
+    "expected_answer": "No"
+  },
+  {
+    "case_id": "AC-insufficient",
+    "question_id": "DEMO-AC-01",
+    "evidence": "Administrative accounts use MFA. The document does not describe other systems.",
+    "expected_answer": "Insufficient evidence"
+  },
+  {
+    "case_id": "DS-positive",
+    "question_id": "DEMO-DS-01",
+    "evidence": "Customer data is encrypted in transit using TLS 1.3 and encrypted at rest using AES-256.",
+    "expected_answer": "Yes"
+  },
+  {
+    "case_id": "DS-negative",
+    "question_id": "DEMO-DS-01",
+    "evidence": "Customer data uses TLS 1.3 in transit but is not encrypted at rest using AES-256.",
+    "expected_answer": "No"
+  },
+  {
+    "case_id": "DS-insufficient",
+    "question_id": "DEMO-DS-01",
+    "evidence": "Customer data is encrypted in transit using TLS 1.2 and at rest using AES-256.",
+    "expected_answer": "Insufficient evidence"
+  },
+  {
+    "case_id": "IR-positive",
+    "question_id": "DEMO-IR-01",
+    "evidence": "The vendor guarantees notification to customers within 24 hours of confirming a security incident.",
+    "expected_answer": "Yes"
+  },
+  {
+    "case_id": "IR-negative",
+    "question_id": "DEMO-IR-01",
+    "evidence": "The vendor does not guarantee security incident notification to customers within 24 hours.",
+    "expected_answer": "No"
+  },
+  {
+    "case_id": "IR-insufficient",
+    "question_id": "DEMO-IR-01",
+    "evidence": "Customers are notified without undue delay after a confirmed security incident.",
+    "expected_answer": "Insufficient evidence"
+  },
+  {
+    "case_id": "VR-positive",
+    "question_id": "DEMO-VR-01",
+    "evidence": "Subprocessors undergo annual security assessments and contractual DPDP and GDPR compliance reviews.",
+    "expected_answer": "Yes"
+  },
+  {
+    "case_id": "VR-negative",
+    "question_id": "DEMO-VR-01",
+    "evidence": "Subprocessors are not subjected to annual security assessments or contractual DPDP and GDPR compliance reviews.",
+    "expected_answer": "No"
+  },
+  {
+    "case_id": "VR-insufficient",
+    "question_id": "DEMO-VR-01",
+    "evidence": "Subprocessors receive a contractual security review before onboarding, but the policy does not state how often existing providers are reassessed.",
+    "expected_answer": "Insufficient evidence"
+  }
+]
+

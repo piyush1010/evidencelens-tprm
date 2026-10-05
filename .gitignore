@@ -1,0 +1,20 @@
+# Local Python environment: large, machine-specific, and recreated from requirements.txt
+.venv/
+
+# Python-generated cache files
+__pycache__/
+*.py[cod]
+
+# Secrets and local configuration
+.env
+.streamlit/secrets.toml
+
+# Operating-system and editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Generated exports
+vendor_assessment.csv
+audit_log.json
+

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "DEMO-AC-01",
+    "control_id": "DEMO-AC-01",
+    "iso_27001_2022_annex_a_controls": ["A.5.15", "A.8.2"],
+    "domain": "Access Control",
+    "question": "Does the vendor enforce Multi-Factor Authentication (MFA) across all corporate and production systems?",
+    "keywords": ["multi-factor authentication", "mfa", "corporate systems", "production systems"]
+  },
+  {
+    "id": "DEMO-DS-01",
+    "control_id": "DEMO-DS-01",
+    "iso_27001_2022_annex_a_controls": ["A.8.24"],
+    "domain": "Data Security",
+    "question": "Is customer data encrypted in transit using TLS 1.3 and at rest using AES-256?",
+    "keywords": ["customer data", "tls 1.3", "aes-256", "encrypted in transit", "encrypted at rest"]
+  },
+  {
+    "id": "DEMO-IR-01",
+    "control_id": "DEMO-IR-01",
+    "iso_27001_2022_annex_a_controls": ["A.5.24", "A.5.25"],
+    "domain": "Incident Response",
+    "question": "Does the vendor guarantee security incident notification to customers within 24 hours?",
+    "keywords": ["security incident", "customers", "within 24 hours", "notification"]
+  },
+  {
+    "id": "DEMO-VR-01",
+    "control_id": "DEMO-VR-01",
+    "iso_27001_2022_annex_a_controls": ["A.5.19", "A.5.21"],
+    "domain": "Vendor Risk",
+    "question": "Are subprocessors subjected to annual security assessments and contractual DPDP/GDPR compliance reviews?",
+    "keywords": ["subprocessors", "annual security assessments", "contractual", "dpdp", "gdpr"]
+  }
+]
