@@ -1,5 +1,20 @@
 # EvidenceLens — one-day TPRM AI MVP
 
+[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://evidencelens-tprm.streamlit.app/)
+
+**Live demo:** [evidencelens-tprm.streamlit.app](https://evidencelens-tprm.streamlit.app/)
+
+## Try it in 30 seconds
+
+1. Open the live demo; no account or API key is required.
+2. Keep **Transparent demo** selected.
+3. Leave the upload empty to use the included synthetic vendor policy.
+4. Click **Run assessment**.
+5. Inspect the evidence citations and open the **Review queue** for ambiguous controls.
+
+Gemini mode is optional and requires visitors to supply their own API key for that browser
+session. No project-owner key is embedded in the public deployment.
+
 EvidenceLens converts vendor security documentation into a reviewable questionnaire
 assessment. It emphasizes evidence traceability and human approval rather than pretending
 that an LLM can make final risk decisions autonomously.
