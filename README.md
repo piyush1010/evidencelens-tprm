@@ -13,6 +13,8 @@
 3. Leave the upload empty to use the included synthetic vendor policy.
 4. Click **▶ Run demo** on the main page.
 5. Inspect the evidence citations and open the **Review queue** for ambiguous controls.
+6. Open **Vendor & risk** to see the sample vendor's inherent tier and residual-risk recommendation,
+   then record a final decision as the risk owner.
 
 Gemini mode is optional and requires visitors to supply their own API key for that browser
 session. No project-owner key is embedded in the public deployment.
@@ -32,6 +34,10 @@ interview preparation, see [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 - Route ambiguous or low-confidence answers to a human review queue.
 - Capture reviewer decisions in an audit log and export the assessment as CSV.
 - Run without an API key using a transparent keyword baseline, or use Gemini structured output.
+- Capture a vendor profile and calculate a rule-based inherent-risk tier that shows which answers drove it.
+- Combine the inherent tier with assessment findings into a residual-risk recommendation
+  (Approve → Reject) that a named risk owner approves or overrides with a recorded reason.
+- Flag any AI-cited quote that does not appear verbatim in the source document.
 
 ## Run locally
 
@@ -85,6 +91,7 @@ To regenerate the baseline locally:
 
 ```bash
 python evaluate.py
+python -m unittest discover -s tests   # risk-scoring tests
 ```
 
 ### Recorded comparison
