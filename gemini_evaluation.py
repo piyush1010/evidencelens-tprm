@@ -19,7 +19,7 @@ class EvaluationBatch(BaseModel):
     predictions: list[EvaluationPrediction]
 
 
-def run_gemini_evaluation(api_key: str, model: str) -> dict:
+def run_gemini_evaluation(api_key: str, model: str, save: bool = True) -> dict:
     from google import genai
 
     client = genai.Client(api_key=api_key)
@@ -102,8 +102,9 @@ EVALUATION CASES:
         else 0.0,
     }
     output = {"summary": summary, "cases": results}
-    (ROOT / "gemini_evaluation_results.json").write_text(
-        json.dumps(output, indent=2) + "\n"
-    )
+    if save:  # the app passes save=False so visitor runs never overwrite the recorded results
+        (ROOT / "gemini_evaluation_results.json").write_text(
+            json.dumps(output, indent=2) + "\n"
+        )
     return output
 

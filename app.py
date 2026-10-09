@@ -2,7 +2,7 @@ import io
 import json
 import os
 from datetime import datetime, timezone
-from typing import Literal
+from typing import Literal, Optional
 
 import pandas as pd
 import streamlit as st
@@ -11,6 +11,25 @@ from pypdf import PdfReader
 
 from assessment import QUESTIONS, SAMPLE_TEXT, demo_assess
 from gemini_evaluation import run_gemini_evaluation
+
+ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+@st.cache_data
+def load_recorded_results(filename: str) -> Optional[dict]:
+    path = os.path.join(ROOT, filename)
+    if not os.path.exists(path):
+        return None
+    with open(path, encoding="utf-8") as handle:
+        return json.load(handle)
+
+
+METRICS = [
+    ("answer_agreement_percent", "Answer agreement"),
+    ("citation_existence_percent", "Citation exists in source"),
+    ("review_routing_recall_percent", "Review-routing recall"),
+    ("unsupported_definitive_percent", "Unsupported definitive answers (lower is better)"),
+]
 
 
 class Assessment(BaseModel):
@@ -95,44 +114,61 @@ if "rows" not in st.session_state:
 if "audit" not in st.session_state:
     st.session_state.audit = []
 
-if run:
-    document = extract_text(upload)
+def run_assessment(document: str, use_gemini: bool, source: str) -> None:
     if not document.strip():
         st.error("No readable text was found in the document.")
-    elif mode.startswith("Gemini") and not api_key:
+        return
+    if use_gemini and not api_key:
         st.error("Add a Gemini API key or use Transparent demo mode.")
-    else:
-        with st.spinner("Mapping evidence to controls…"):
-            try:
-                rows = gemini_assess(document, api_key, model) if mode.startswith("Gemini") else demo_assess(document)
-                for row in rows:
-                    row["review_status"] = "Needs review" if row["confidence"] < threshold or row["answer"] == "Insufficient evidence" else "Auto-ready"
-                    row["reviewer_decision"] = "Pending"
-                st.session_state.rows = rows
-                st.session_state.audit.append({
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(), "event": "assessment_completed",
-                    "mode": mode, "questions": len(rows), "source": upload.name if upload else "synthetic_demo_policy",
-                })
-            except Exception as exc:
-                error_text = str(exc)
-                if "503" in error_text or "UNAVAILABLE" in error_text:
-                    st.error(
-                        "Gemini is temporarily at capacity. Retry later or select a different "
-                        "approved model. Your document and settings are unchanged."
-                    )
-                elif "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
-                    st.error(
-                        "The Gemini request or quota limit was reached. Wait before retrying "
-                        "and check the Usage page in Google AI Studio."
-                    )
-                else:
-                    st.error(f"Assessment failed: {error_text}")
+        return
+    with st.spinner("Mapping evidence to controls…"):
+        try:
+            rows = gemini_assess(document, api_key, model) if use_gemini else demo_assess(document)
+            for row in rows:
+                row["review_status"] = "Needs review" if row["confidence"] < threshold or row["answer"] == "Insufficient evidence" else "Auto-ready"
+                row["reviewer_decision"] = "Pending"
+            st.session_state.rows = rows
+            st.session_state.audit.append({
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(), "event": "assessment_completed",
+                "mode": "Gemini structured output" if use_gemini else "Transparent demo",
+                "questions": len(rows), "source": source,
+            })
+        except Exception as exc:
+            error_text = str(exc)
+            if "503" in error_text or "UNAVAILABLE" in error_text:
+                st.error(
+                    "Gemini is temporarily at capacity. Retry later or select a different "
+                    "approved model. Your document and settings are unchanged."
+                )
+            elif "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
+                st.error(
+                    "The Gemini request or quota limit was reached. Wait before retrying "
+                    "and check the Usage page in Google AI Studio."
+                )
+            else:
+                st.error(f"Assessment failed: {error_text}")
+
 
 if not st.session_state.rows:
-    st.info("Upload a policy or run the included synthetic example to begin.")
-    st.subheader("What this MVP demonstrates")
-    st.markdown("- Evidence-grounded questionnaire completion\n- Structured AI output and explicit uncertainty\n- Confidence-based exception routing\n- Human approval and an exportable audit trail")
+    hero_text, hero_button = st.columns([3, 1], vertical_alignment="center")
+    hero_text.markdown(
+        "**See it in one click.** Runs the transparent baseline on a synthetic vendor policy — "
+        "no upload or API key needed."
+    )
+    demo_clicked = hero_button.button("▶ Run demo", type="primary", use_container_width=True)
 else:
+    demo_clicked = False
+
+if demo_clicked:
+    run_assessment(SAMPLE_TEXT, use_gemini=False, source="synthetic_demo_policy")
+    if st.session_state.rows:
+        st.rerun()  # redraw without the one-click banner
+elif run:
+    run_assessment(extract_text(upload), use_gemini=mode.startswith("Gemini"),
+                   source=upload.name if upload else "synthetic_demo_policy")
+
+has_rows = bool(st.session_state.rows)
+if has_rows:
     df = pd.DataFrame(st.session_state.rows)
     needs_review = ((df.review_status == "Needs review")).sum()
     supported = (df.answer == "Yes").sum()
@@ -142,10 +178,17 @@ else:
     c3.metric("Needs human review", int(needs_review))
     c4.metric("Average confidence", f"{df.confidence.mean():.0f}%")
 
-    overview, review, evaluation, audit = st.tabs(
-        ["Assessment", "Review queue", "Evaluation", "Audit & export"]
-    )
-    with overview:
+overview, review, evaluation, audit = st.tabs(
+    ["Assessment", "Review queue", "Evaluation", "Audit & export"]
+)
+
+with overview:
+    if not has_rows:
+        st.info("Click **Run demo** above, or upload a policy in the sidebar, to begin.")
+        st.subheader("What this MVP demonstrates")
+        st.markdown("- Evidence-grounded questionnaire completion\n- Structured AI output and explicit uncertainty\n- Confidence-based exception routing\n- Human approval and an exportable audit trail")
+        st.caption("Want the numbers first? Open the **Evaluation** tab for the recorded baseline-vs-Gemini results.")
+    else:
         st.dataframe(df[["control_id", "iso_controls", "domain", "answer", "confidence", "review_status", "gap_or_follow_up"]],
                      use_container_width=True, hide_index=True)
         for row in st.session_state.rows:
@@ -156,37 +199,80 @@ else:
                 if row["gap_or_follow_up"]:
                     st.warning(row["gap_or_follow_up"])
 
-    with review:
-        review_rows = [r for r in st.session_state.rows if r["review_status"] == "Needs review"]
-        if not review_rows:
-            st.success("No exceptions require review at this threshold.")
-        for row in review_rows:
-            st.markdown(f"**{row['question_id']} — {row['question']}**")
-            st.caption(f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A mapping: {row['iso_controls']}")
-            st.caption(f"AI answer: {row['answer']} · Confidence: {row['confidence']}%")
-            st.write(f"Evidence: “{row['evidence_quote']}”")
-            decision = st.selectbox("Reviewer decision", ["Pending", "Approve", "Reject", "Request evidence"],
-                                    key=f"decision-{row['question_id']}")
-            if decision != row["reviewer_decision"]:
-                row["reviewer_decision"] = decision
-                st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                    "event": "review_decision", "question_id": row["question_id"], "decision": decision})
-            st.divider()
+with review:
+    if not has_rows:
+        st.info("Run an assessment to populate the review queue.")
+    review_rows = [r for r in st.session_state.rows if r["review_status"] == "Needs review"]
+    if has_rows and not review_rows:
+        st.success("No exceptions require review at this threshold.")
+    for row in review_rows:
+        st.markdown(f"**{row['question_id']} — {row['question']}**")
+        st.caption(f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A mapping: {row['iso_controls']}")
+        st.caption(f"AI answer: {row['answer']} · Confidence: {row['confidence']}%")
+        st.write(f"Evidence: “{row['evidence_quote']}”")
+        decision = st.selectbox("Reviewer decision", ["Pending", "Approve", "Reject", "Request evidence"],
+                                key=f"decision-{row['question_id']}")
+        if decision != row["reviewer_decision"]:
+            row["reviewer_decision"] = decision
+            st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "event": "review_decision", "question_id": row["question_id"], "decision": decision})
+        st.divider()
 
-    with evaluation:
-        st.subheader("Labelled 12-case evaluation")
-        st.write(
-            "Compare the selected Gemini model with human-labelled positive, negative, "
-            "and insufficient-evidence cases."
+with evaluation:
+    st.subheader("Labelled 12-case evaluation")
+    st.write(
+        "Twelve hand-labelled cases — a positive, a negative and an insufficient-evidence case "
+        "for each of four controls — designed to catch negation, missing deadlines and scope gaps."
+    )
+    baseline = load_recorded_results("evaluation_results.json")
+    gemini_recorded = load_recorded_results("gemini_evaluation_results.json")
+
+    if baseline and gemini_recorded:
+        gemini_engine = gemini_recorded["summary"]["engine"]
+        st.markdown(f"**Recorded results** · keyword baseline vs `{gemini_engine}`")
+        summary_rows = [
+            {
+                "Metric": label,
+                "Keyword baseline": f"{baseline['summary'][key]}%",
+                f"Gemini ({gemini_engine})": f"{gemini_recorded['summary'][key]}%",
+            }
+            for key, label in METRICS
+        ]
+        st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+        baseline_cases = {c["case_id"]: c for c in baseline["cases"]}
+        case_rows = []
+        for case in gemini_recorded["cases"]:
+            base = baseline_cases.get(case["case_id"], {})
+            case_rows.append({
+                "Case": case["case_id"],
+                "Expected": case["expected_answer"],
+                "Baseline": base.get("actual_answer", "—"),
+                "Baseline ✓": "✅" if base.get("answer_agrees") else "❌",
+                "Gemini": case["actual_answer"],
+                "Gemini ✓": "✅" if case["answer_agrees"] else "❌",
+            })
+        with st.expander("Case-by-case results", expanded=True):
+            st.dataframe(pd.DataFrame(case_rows), use_container_width=True, hide_index=True)
+        st.caption(
+            "A small, controlled engineering test on synthetic evidence — not a general "
+            "model-accuracy or production-readiness claim. The keyword baseline mostly fails on "
+            "negated statements (\"does not encrypt…\"), which it reads as support."
         )
-        if mode != "Gemini structured output":
-            st.info("Select Gemini structured output in the sidebar to run this evaluation.")
-        elif not api_key:
-            st.info("Enter your Gemini API key in the sidebar. The key is not written to the results file.")
-        elif st.button("Run Gemini evaluation", type="primary"):
+    else:
+        st.warning("Recorded evaluation files were not found in this deployment.")
+
+    with st.expander("Re-run the Gemini evaluation with your own API key"):
+        st.write(
+            "Sends the same 12 cases to the model selected in the sidebar in one structured "
+            "request. Your key stays in this browser session and is not saved."
+        )
+        live_key = st.text_input("Gemini API key", type="password", key="eval_api_key",
+                                 value=api_key or "")
+        if st.button("Run Gemini evaluation", disabled=not live_key):
             with st.spinner("Evaluating 12 labelled cases in one structured request…"):
                 try:
-                    st.session_state.gemini_evaluation = run_gemini_evaluation(api_key, model)
+                    st.session_state.gemini_evaluation = run_gemini_evaluation(live_key, model, save=False)
                 except Exception as exc:
                     error_text = str(exc)
                     if "503" in error_text or "UNAVAILABLE" in error_text:
@@ -199,6 +285,7 @@ else:
         if "gemini_evaluation" in st.session_state:
             evaluation_output = st.session_state.gemini_evaluation
             summary = evaluation_output["summary"]
+            st.markdown(f"**Your run** · `{summary['engine']}`")
             e1, e2, e3, e4 = st.columns(4)
             e1.metric("Answer agreement", f"{summary['answer_agreement_percent']}%")
             e2.metric("Citation existence", f"{summary['citation_existence_percent']}%")
@@ -220,7 +307,10 @@ else:
                 "application/json",
             )
 
-    with audit:
+with audit:
+    if not has_rows:
+        st.info("Run an assessment to export results and the audit log.")
+    else:
         export_df = pd.DataFrame(st.session_state.rows)
         st.download_button("Download assessment CSV", export_df.to_csv(index=False),
                            "vendor_assessment.csv", "text/csv")

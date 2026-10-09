@@ -4,12 +4,14 @@
 
 **Live demo:** [evidencelens-tprm.streamlit.app](https://evidencelens-tprm.streamlit.app/)
 
+<!-- SCREENSHOTS: add docs/assessment.png, docs/review-queue.png, docs/evaluation.png -->
+
 ## Try it in 30 seconds
 
 1. Open the live demo; no account or API key is required.
 2. Keep **Transparent demo** selected.
 3. Leave the upload empty to use the included synthetic vendor policy.
-4. Click **Run assessment**.
+4. Click **▶ Run demo** on the main page.
 5. Inspect the evidence citations and open the **Review queue** for ambiguous controls.
 
 Gemini mode is optional and requires visitors to supply their own API key for that browser
@@ -75,32 +77,17 @@ model is `gemini-3.5-flash-lite`; the UI also offers `gemini-3.8-flash` and
 3. **Hours 6–7:** add confidence routing, human review and audit export.
 4. **Hour 8:** run an evaluation set, record a short demo and publish the repository.
 
-## Evaluation sheet to add before sharing
+## Evaluation
 
-Create 20–30 manually labelled question/evidence pairs. Report:
-
-- Answer agreement with the human label.
-- Citation validity: whether the quoted passage exists and supports the answer.
-- Unsupported-answer rate.
-- Percentage correctly routed to human review.
-- Median latency and estimated cost per questionnaire.
-
-The repository includes an initial 12-case adversarial test set for the transparent
-baseline. Run it with:
+The **Evaluation** tab shows recorded results on 12 hand-labelled cases (keyword baseline vs
+Gemini) without needing an API key; visitors can optionally re-run Gemini with their own key.
+To regenerate the baseline locally:
 
 ```bash
 python evaluate.py
 ```
 
-The generated `evaluation_results.json` records both the summary and case-level failures.
-Treat this as an engineering smoke test; expand it before making portfolio-quality claims.
-
-After running a normal Gemini assessment in the app, open the **Evaluation** tab and click
-**Run Gemini evaluation**. The app evaluates the same 12 cases in one structured request,
-displays a baseline comparison, and writes `gemini_evaluation_results.json` without storing
-the API key.
-
-### Initial measured comparison
+### Recorded comparison
 
 On the included 12-case synthetic test, the keyword baseline reached 58.3% answer agreement
 and 62.5% review-routing recall. A recorded `gemini-3.5-flash-lite` run reached 100% on both,
