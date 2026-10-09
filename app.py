@@ -45,9 +45,10 @@ must be short, exact excerpts from the supplied text. Use Insufficient evidence 
 is ambiguous, incomplete, or lacks a required frequency/deadline. Confidence measures the
 strength of the cited evidence, not general plausibility.
 
-QUESTIONS AND ILLUSTRATIVE FRAMEWORK MAPPINGS:
+QUESTIONS AND ILLUSTRATIVE FRAMEWORK REFERENCES:
 {json.dumps([{'id': q['id'], 'control_id': q['control_id'],
               'iso_27001_2022_annex_a_controls': q['iso_27001_2022_annex_a_controls'],
+              'nist_csf_2_0_subcategories': q['nist_csf_2_0_subcategories'],
               'question': q['question']} for q in QUESTIONS], indent=2)}
 
 VENDOR EVIDENCE:
@@ -64,6 +65,7 @@ VENDOR EVIDENCE:
         {**item.model_dump(),
          "control_id": question_map[item.question_id]["control_id"],
          "iso_controls": " & ".join(question_map[item.question_id]["iso_27001_2022_annex_a_controls"]),
+         "nist_csf_subcategories": " & ".join(question_map[item.question_id]["nist_csf_2_0_subcategories"]),
          "domain": question_map[item.question_id]["domain"],
          "question": question_map[item.question_id]["question"]}
         for item in parsed.assessments if item.question_id in question_map
@@ -88,7 +90,7 @@ with st.sidebar:
     threshold = st.slider("Human-review threshold", 50, 95, 75)
     upload = st.file_uploader("Vendor evidence", type=["pdf", "txt", "md"])
     st.caption("No file? The app uses a synthetic vendor policy so the demo always works.")
-    run = st.button("Run assessment", type="primary", use_container_width=True)
+    run = st.button("Run assessment", type="primary", width="stretch")
 
 if "rows" not in st.session_state:
     st.session_state.rows = []
@@ -132,6 +134,12 @@ if not st.session_state.rows:
     st.info("Upload a policy or run the included synthetic example to begin.")
     st.subheader("What this MVP demonstrates")
     st.markdown("- Evidence-grounded questionnaire completion\n- Structured AI output and explicit uncertainty\n- Confidence-based exception routing\n- Human approval and an exportable audit trail")
+    with st.expander("Framework scope and content boundaries"):
+        st.markdown(
+            "- Questions are original demonstration content, not the proprietary Shared Assessments SIG questionnaire.\n"
+            "- Shared Assessments SIG is represented as framework familiarity only; no SIG questions or IDs are bundled.\n"
+            "- ISO 27001:2022 and NIST CSF 2.0 references are illustrative and require validation before production use."
+        )
 else:
     df = pd.DataFrame(st.session_state.rows)
     needs_review = ((df.review_status == "Needs review")).sum()
@@ -146,11 +154,14 @@ else:
         ["Assessment", "Review queue", "Evaluation", "Audit & export"]
     )
     with overview:
-        st.dataframe(df[["control_id", "iso_controls", "domain", "answer", "confidence", "review_status", "gap_or_follow_up"]],
-                     use_container_width=True, hide_index=True)
+        st.dataframe(df[["control_id", "iso_controls", "nist_csf_subcategories", "domain", "answer", "confidence", "review_status", "gap_or_follow_up"]],
+                     width="stretch", hide_index=True)
         for row in st.session_state.rows:
             with st.expander(f"{row['question_id']} · {row['question']} — {row['answer']} ({row['confidence']}%)"):
-                st.caption(f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A mapping: {row['iso_controls']}")
+                st.caption(
+                    f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A: "
+                    f"{row['iso_controls']} · Illustrative NIST CSF 2.0: {row['nist_csf_subcategories']}"
+                )
                 st.markdown(f"**Evidence:** “{row['evidence_quote']}”")
                 st.write(row["rationale"])
                 if row["gap_or_follow_up"]:
@@ -162,7 +173,10 @@ else:
             st.success("No exceptions require review at this threshold.")
         for row in review_rows:
             st.markdown(f"**{row['question_id']} — {row['question']}**")
-            st.caption(f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A mapping: {row['iso_controls']}")
+            st.caption(
+                f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A: "
+                f"{row['iso_controls']} · Illustrative NIST CSF 2.0: {row['nist_csf_subcategories']}"
+            )
             st.caption(f"AI answer: {row['answer']} · Confidence: {row['confidence']}%")
             st.write(f"Evidence: “{row['evidence_quote']}”")
             decision = st.selectbox("Reviewer decision", ["Pending", "Approve", "Reject", "Request evidence"],
@@ -174,17 +188,17 @@ else:
             st.divider()
 
     with evaluation:
-        st.subheader("Labelled 12-case evaluation")
+        st.subheader("Labelled 12-case synthetic evaluation")
         st.write(
-            "Compare the selected Gemini model with human-labelled positive, negative, "
-            "and insufficient-evidence cases."
+            "Compare the selected Gemini model with human-labelled synthetic positive, negative, "
+            "and insufficient-evidence cases. This controlled test is not a production-accuracy claim."
         )
         if mode != "Gemini structured output":
             st.info("Select Gemini structured output in the sidebar to run this evaluation.")
         elif not api_key:
             st.info("Enter your Gemini API key in the sidebar. The key is not written to the results file.")
         elif st.button("Run Gemini evaluation", type="primary"):
-            with st.spinner("Evaluating 12 labelled cases in one structured request…"):
+            with st.spinner("Evaluating 12 labelled synthetic cases in one structured request…"):
                 try:
                     st.session_state.gemini_evaluation = run_gemini_evaluation(api_key, model)
                 except Exception as exc:
@@ -210,7 +224,7 @@ else:
                     "case_id", "expected_answer", "actual_answer", "answer_agrees",
                     "citation_exists", "evidence_quote"
                 ]],
-                use_container_width=True,
+                width="stretch",
                 hide_index=True,
             )
             st.download_button(
@@ -229,4 +243,8 @@ else:
         st.json(st.session_state.audit)
 
 st.divider()
-st.caption("Questions are original demo content. ISO mappings are illustrative and should be validated against an authoritative licensed source. AI output requires human validation.")
+st.caption(
+    "Questions are original demo content and do not reproduce the proprietary Shared Assessments SIG questionnaire. "
+    "ISO 27001:2022 and NIST CSF 2.0 references are illustrative and require validation before production use. "
+    "AI output requires human validation."
+)

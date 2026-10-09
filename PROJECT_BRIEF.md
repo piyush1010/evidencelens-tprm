@@ -62,8 +62,10 @@ The current MVP allows a user to:
 6. Record reviewer decisions.
 7. Export the assessment as CSV and the audit history as JSON.
 
-The questions are original demo content. Displayed ISO mappings are illustrative and are not a
-claim of ISO certification or official framework validation.
+The questions are original demo content. Displayed ISO 27001:2022 and NIST CSF 2.0 references
+are illustrative and are not a claim of certification or official framework validation. Shared
+Assessments SIG is represented as framework familiarity only; no proprietary SIG questions or IDs
+are included.
 
 ## 7. Product workflow
 
@@ -164,11 +166,11 @@ queue.
 ## 11. Current limitations
 
 - Only four original demo controls are included.
-- The system is not an official SIG implementation and has not been certified against ISO 27001.
+- The system is not an official Shared Assessments SIG implementation and has not been certified against ISO 27001.
 - Scanned PDFs may require OCR because PyPDF primarily extracts embedded text.
 - Results are stored only in the current browser session; there is no persistent database.
 - There is no authentication, tenant isolation, role-based access, or production security model.
-- Framework mappings are illustrative and need validation against authoritative licensed sources.
+- ISO 27001:2022 and NIST CSF 2.0 references are illustrative and need validation before production use.
 - The Gemini path still needs a labelled evaluation before quality claims can be made.
 - It supports an assessment step, not the entire TPRM lifecycle.
 

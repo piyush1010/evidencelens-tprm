@@ -25,7 +25,7 @@ interview preparation, see [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 ## What the demo proves
 
 - Upload PDF/TXT/Markdown vendor evidence.
-- Map evidence to four original demo controls with illustrative ISO 27001:2022 Annex A references.
+- Map evidence to four original demo controls with illustrative ISO 27001:2022 Annex A and NIST CSF 2.0 references.
 - Return a structured answer, exact evidence quote, rationale, confidence and follow-up.
 - Route ambiguous or low-confidence answers to a human review queue.
 - Capture reviewer decisions in an audit log and export the assessment as CSV.
@@ -60,8 +60,9 @@ model is `gemini-3.5-flash-lite`; the UI also offers `gemini-3.8-flash` and
 
 ## Honest limitations
 
-- The sample question set is original demo content and is not the proprietary SIG questionnaire.
-- The displayed ISO mappings are illustrative and must be validated against an
+- The sample question set is original demo content and is not the proprietary Shared Assessments SIG questionnaire.
+- Shared Assessments SIG is represented as framework familiarity only; no proprietary SIG questions or IDs are bundled.
+- The displayed ISO 27001:2022 and NIST CSF 2.0 references are illustrative and must be validated against an
   authoritative licensed framework source before production use.
 - PDF text extraction may not handle scanned documents; production would add OCR.
 - The demo baseline is keyword-based, not semantic retrieval.

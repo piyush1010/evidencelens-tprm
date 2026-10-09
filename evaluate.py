@@ -48,6 +48,7 @@ def main() -> None:
     definitive = [row for row in results if row["actual_answer"] == "Yes"]
     summary = {
         "engine": "transparent_keyword_baseline",
+        "dataset": "12_case_labelled_synthetic_test",
         "cases": total,
         "answer_agreement_percent": round(
             100 * sum(row["answer_agrees"] for row in results) / total, 1
@@ -78,4 +79,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

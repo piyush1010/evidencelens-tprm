@@ -57,6 +57,9 @@ def demo_assess(text: str) -> list[dict]:
                 "iso_controls": " & ".join(
                     question["iso_27001_2022_annex_a_controls"]
                 ),
+                "nist_csf_subcategories": " & ".join(
+                    question["nist_csf_2_0_subcategories"]
+                ),
                 "domain": question["domain"],
                 "question": question["question"],
                 "answer": answer,
@@ -71,4 +74,3 @@ def demo_assess(text: str) -> list[dict]:
         )
 
     return rows
-

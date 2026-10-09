@@ -81,6 +81,7 @@ EVALUATION CASES:
     definitive = [row for row in results if row["actual_answer"] == "Yes"]
     summary = {
         "engine": model,
+        "dataset": "12_case_labelled_synthetic_test",
         "cases": total,
         "answer_agreement_percent": round(
             100 * sum(row["answer_agrees"] for row in results) / total, 1
@@ -106,4 +107,3 @@ EVALUATION CASES:
         json.dumps(output, indent=2) + "\n"
     )
     return output
-

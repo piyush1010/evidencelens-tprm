@@ -1,6 +1,7 @@
 {
   "summary": {
     "engine": "gemini-3.5-flash-lite",
+    "dataset": "12_case_labelled_synthetic_test",
     "cases": 12,
     "answer_agreement_percent": 100.0,
     "citation_existence_percent": 100.0,

@@ -1,6 +1,7 @@
 {
   "summary": {
     "engine": "transparent_keyword_baseline",
+    "dataset": "12_case_labelled_synthetic_test",
     "cases": 12,
     "answer_agreement_percent": 58.3,
     "citation_existence_percent": 100.0,
