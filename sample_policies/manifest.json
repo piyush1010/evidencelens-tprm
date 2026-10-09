@@ -1,0 +1,20 @@
+[
+  {
+    "id": "mixed-evidence",
+    "title": "Mixed evidence — shows the review queue",
+    "description": "Two controls are supported and two have important evidence gaps. Recommended for a first demo.",
+    "file": "mixed_evidence_policy.txt"
+  },
+  {
+    "id": "strong-controls",
+    "title": "Strong controls — complete statements",
+    "description": "All four control statements are explicit enough for the transparent baseline to mark them supported.",
+    "file": "strong_controls_policy.txt"
+  },
+  {
+    "id": "evidence-gaps",
+    "title": "Evidence gaps — ambiguous and incomplete",
+    "description": "Every domain contains partial or vague evidence that should be escalated for human review.",
+    "file": "evidence_gaps_policy.txt"
+  }
+]

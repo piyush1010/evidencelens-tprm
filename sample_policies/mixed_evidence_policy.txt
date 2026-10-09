@@ -1,0 +1,22 @@
+NORTHSTAR CLOUD SECURITY POLICY — SYNTHETIC DEMO
+
+Access control
+Northstar Cloud uses role-based access control and least-privilege access. Multi-factor
+authentication (MFA) is enforced across all corporate systems and all production systems.
+Access rights are reviewed quarterly and removed promptly when employment ends.
+
+Encryption
+Customer data is encrypted in transit using TLS 1.3 and encrypted at rest using AES-256.
+Encryption keys are centrally managed and rotated annually.
+
+Incident response
+Northstar Cloud maintains a documented incident-response plan. Customers are notified
+without undue delay after a confirmed incident affecting their data. The policy does not
+provide a contractual 24-hour notification deadline.
+
+Vendor management
+Critical subprocessors receive a security review before onboarding. Reviews include security
+documentation and contractual data-protection obligations. This policy does not state how often
+existing subprocessors are reassessed.
+
+This document is fictional and was created solely for the EvidenceLens demonstration.

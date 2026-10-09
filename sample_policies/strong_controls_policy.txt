@@ -1,0 +1,19 @@
+SUMMIT SOFTWARE SECURITY POLICY — SYNTHETIC DEMO
+
+Access control
+Multi-factor authentication (MFA) is enforced across all corporate systems and all production
+systems. Access is based on least privilege and reviewed quarterly.
+
+Encryption
+Customer data is encrypted in transit using TLS 1.3 and encrypted at rest using AES-256.
+Encryption keys are centrally managed and rotated annually.
+
+Incident response
+Summit Software guarantees notification to customers within 24 hours after confirming a security
+incident that affects customer data. The incident-response plan is tested annually.
+
+Vendor management
+Subprocessors undergo annual security assessments and contractual DPDP and GDPR compliance
+reviews. Findings are tracked to remediation before renewal.
+
+This document is fictional and was created solely for the EvidenceLens demonstration.

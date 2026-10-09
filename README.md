@@ -8,8 +8,8 @@
 
 1. Open the live demo; no account or API key is required.
 2. Keep **Transparent demo** selected.
-3. Leave the upload empty to use the included synthetic vendor policy.
-4. Click **Run included demo** on the main page (or **Run assessment** in the sidebar).
+3. Choose one of the synthetic sample policies on the main page.
+4. Click **Run selected sample** (or upload your own document from the sidebar).
 5. Inspect the evidence citations and open the **Review queue** for ambiguous controls.
 
 Gemini mode is optional and requires visitors to supply their own API key for that browser
@@ -31,6 +31,7 @@ interview preparation, see [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 - Capture reviewer decisions in an audit log and export the assessment as CSV.
 - Run without an API key using a transparent keyword baseline, or use Gemini structured output.
 - Clearly label the no-key demo as the keyword baseline and distinguish insufficient closest-text matches from supporting evidence.
+- Offer downloadable strong-control, mixed-evidence, and evidence-gap sample policies for interviewer testing.
 
 ## Run locally
 

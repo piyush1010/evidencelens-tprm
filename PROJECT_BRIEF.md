@@ -54,13 +54,16 @@ The purpose is not to replace a risk analyst or certify a vendor. It is to:
 
 The current MVP allows a user to:
 
-1. Upload a PDF, TXT, or Markdown vendor document, or use a synthetic example.
+1. Upload a PDF, TXT, or Markdown vendor document, or choose from three downloadable synthetic sample policies.
 2. Choose a transparent keyword baseline or optional Gemini analysis.
 3. Assess the evidence against four original demo controls.
 4. Receive a structured answer, confidence score, exact evidence quote, rationale, and follow-up.
 5. Route insufficient or low-confidence results to a human-review queue.
 6. Record reviewer decisions.
 7. Export the assessment as CSV and the audit history as JSON.
+
+The sample library includes strong-control, mixed-evidence, and evidence-gap scenarios so a
+visitor can test supported and review-routed outcomes without an API key.
 
 The questions are original demo content. Displayed ISO 27001:2022 and NIST CSF 2.0 references
 are illustrative and are not a claim of certification or official framework validation. Shared

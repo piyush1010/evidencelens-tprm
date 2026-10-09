@@ -1,0 +1,18 @@
+RIVERBEND TECHNOLOGIES SECURITY OVERVIEW — SYNTHETIC DEMO
+
+Access control
+Administrative accounts use MFA. The document does not describe whether MFA is enforced across
+all corporate and production systems.
+
+Encryption
+Customer data is protected using industry-standard encryption. The document does not specify the
+transport protocol version or the encryption method used at rest.
+
+Incident response
+Customers may be notified after a material incident. No guaranteed notification deadline is stated.
+
+Vendor management
+Subprocessors receive a security review before onboarding, but the document does not state how often
+existing subprocessors are reassessed or whether DPDP and GDPR obligations are reviewed annually.
+
+This document is fictional and was created solely for the EvidenceLens demonstration.

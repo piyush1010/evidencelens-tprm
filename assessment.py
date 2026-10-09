@@ -5,6 +5,24 @@ from pathlib import Path
 ROOT = Path(__file__).parent
 QUESTIONS = json.loads((ROOT / "questions.json").read_text())
 SAMPLE_TEXT = (ROOT / "sample_vendor_policy.txt").read_text()
+SAMPLE_MANIFEST = json.loads(
+    (ROOT / "sample_policies" / "manifest.json").read_text()
+)
+
+
+def load_sample_policies() -> dict[str, dict]:
+    """Load synthetic interviewer-ready policy scenarios from the manifest."""
+    sample_directory = ROOT / "sample_policies"
+    return {
+        sample["id"]: {
+            **sample,
+            "text": (sample_directory / sample["file"]).read_text(),
+        }
+        for sample in SAMPLE_MANIFEST
+    }
+
+
+SAMPLE_POLICIES = load_sample_policies()
 
 
 def enrich_framework_metadata(rows: list[dict]) -> list[dict]:

@@ -10,7 +10,13 @@ import streamlit as st
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
-from assessment import QUESTIONS, SAMPLE_TEXT, demo_assess, enrich_framework_metadata
+from assessment import (
+    QUESTIONS,
+    SAMPLE_POLICIES,
+    SAMPLE_TEXT,
+    demo_assess,
+    enrich_framework_metadata,
+)
 from gemini_evaluation import run_gemini_evaluation
 
 
@@ -43,6 +49,64 @@ def extract_text(uploaded) -> str:
         reader = PdfReader(io.BytesIO(uploaded.getvalue()))
         return "\n".join(page.extract_text() or "" for page in reader.pages)
     return uploaded.getvalue().decode("utf-8", errors="replace")
+
+
+def prepare_rows(rows: list[dict], threshold: int) -> list[dict]:
+    """Add current metadata and workflow fields to assessment results."""
+    rows = enrich_framework_metadata(rows)
+    for row in rows:
+        row["review_status"] = (
+            "Needs review"
+            if row["confidence"] < threshold
+            or row["answer"] == "Insufficient evidence"
+            else "Auto-ready"
+        )
+        row["reviewer_decision"] = "Pending"
+    return rows
+
+
+def store_assessment(rows: list[dict], mode: str, source: str) -> None:
+    """Persist one assessment and its completion event for this browser session."""
+    st.session_state.rows = rows
+    st.session_state.last_assessment_mode = mode
+    st.session_state.audit.append(
+        {
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "event": "assessment_completed",
+            "mode": mode,
+            "questions": len(rows),
+            "source": source,
+        }
+    )
+
+
+def render_sample_picker(key_prefix: str) -> tuple[bool, dict]:
+    """Render the public sample library and return the selected run action."""
+    sample_ids = list(SAMPLE_POLICIES)
+    selected_id = st.selectbox(
+        "Choose a sample policy",
+        sample_ids,
+        format_func=lambda sample_id: SAMPLE_POLICIES[sample_id]["title"],
+        key=f"{key_prefix}-sample-policy",
+    )
+    selected = SAMPLE_POLICIES[selected_id]
+    st.caption(selected["description"])
+    run_column, download_column = st.columns(2)
+    run_sample = run_column.button(
+        "Run selected sample",
+        type="primary",
+        width="stretch",
+        key=f"{key_prefix}-run-sample",
+    )
+    download_column.download_button(
+        "Download sample policy",
+        selected["text"],
+        file_name=selected["file"],
+        mime="text/plain",
+        width="stretch",
+        key=f"{key_prefix}-download-sample",
+    )
+    return run_sample, selected
 
 
 def gemini_assess(text: str, api_key: str, model: str) -> list[dict]:
@@ -123,16 +187,12 @@ if run:
         with st.spinner("Mapping evidence to controls…"):
             try:
                 rows = gemini_assess(document, api_key, model) if mode.startswith("Gemini") else demo_assess(document)
-                rows = enrich_framework_metadata(rows)
-                for row in rows:
-                    row["review_status"] = "Needs review" if row["confidence"] < threshold or row["answer"] == "Insufficient evidence" else "Auto-ready"
-                    row["reviewer_decision"] = "Pending"
-                st.session_state.rows = rows
-                st.session_state.last_assessment_mode = mode
-                st.session_state.audit.append({
-                    "timestamp_utc": datetime.now(timezone.utc).isoformat(), "event": "assessment_completed",
-                    "mode": mode, "questions": len(rows), "source": upload.name if upload else "synthetic_demo_policy",
-                })
+                rows = prepare_rows(rows, threshold)
+                store_assessment(
+                    rows,
+                    mode,
+                    upload.name if upload else "synthetic_demo_policy",
+                )
             except Exception as exc:
                 error_text = str(exc)
                 if "503" in error_text or "UNAVAILABLE" in error_text:
@@ -150,26 +210,14 @@ if run:
 
 if not st.session_state.rows:
     st.info("Upload a policy or run the included synthetic example to begin.")
-    if st.button("Run included demo", type="primary", width="stretch"):
-        rows = enrich_framework_metadata(demo_assess(SAMPLE_TEXT))
-        for row in rows:
-            row["review_status"] = (
-                "Needs review"
-                if row["confidence"] < threshold
-                or row["answer"] == "Insufficient evidence"
-                else "Auto-ready"
-            )
-            row["reviewer_decision"] = "Pending"
-        st.session_state.rows = rows
-        st.session_state.last_assessment_mode = "Transparent demo"
-        st.session_state.audit.append(
-            {
-                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                "event": "assessment_completed",
-                "mode": "Transparent demo",
-                "questions": len(rows),
-                "source": "synthetic_demo_policy",
-            }
+    st.subheader("Try a sample vendor policy")
+    run_sample, selected_sample = render_sample_picker("landing")
+    if run_sample:
+        rows = prepare_rows(demo_assess(selected_sample["text"]), threshold)
+        store_assessment(
+            rows,
+            "Transparent demo",
+            f"sample:{selected_sample['id']}",
         )
         st.rerun()
     st.caption(
@@ -194,6 +242,16 @@ else:
         )
     else:
         st.info(f"Analysis engine: {model} with Gemini structured output.")
+    with st.expander("Try another sample policy"):
+        run_sample, selected_sample = render_sample_picker("results")
+        if run_sample:
+            rows = prepare_rows(demo_assess(selected_sample["text"]), threshold)
+            store_assessment(
+                rows,
+                "Transparent demo",
+                f"sample:{selected_sample['id']}",
+            )
+            st.rerun()
     needs_review = ((df.review_status == "Needs review")).sum()
     supported = (df.answer == "Yes").sum()
     c1, c2, c3, c4 = st.columns(4)
