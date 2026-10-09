@@ -2,7 +2,7 @@
   {
     "id": "DEMO-AC-01",
     "control_id": "DEMO-AC-01",
-    "iso_27001_2022_annex_a_controls": ["A.5.15", "A.8.2"],
+    "iso_27001_2022_annex_a_controls": ["A.5.15", "A.8.5"],
     "nist_csf_2_0_subcategories": ["PR.AA-03"],
     "domain": "Access Control",
     "question": "Does the vendor enforce Multi-Factor Authentication (MFA) across all corporate and production systems?",

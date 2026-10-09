@@ -2,6 +2,7 @@ import io
 import json
 import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Literal
 
 import pandas as pd
@@ -11,6 +12,15 @@ from pypdf import PdfReader
 
 from assessment import QUESTIONS, SAMPLE_TEXT, demo_assess, enrich_framework_metadata
 from gemini_evaluation import run_gemini_evaluation
+
+
+ROOT = Path(__file__).parent
+SAVED_GEMINI_EVALUATION = json.loads(
+    (ROOT / "gemini_evaluation_results.json").read_text()
+)
+SAVED_BASELINE_EVALUATION = json.loads(
+    (ROOT / "evaluation_results.json").read_text()
+)
 
 
 class Assessment(BaseModel):
@@ -137,6 +147,27 @@ if run:
 
 if not st.session_state.rows:
     st.info("Upload a policy or run the included synthetic example to begin.")
+    if st.button("Run included demo", type="primary", width="stretch"):
+        rows = enrich_framework_metadata(demo_assess(SAMPLE_TEXT))
+        for row in rows:
+            row["review_status"] = (
+                "Needs review"
+                if row["confidence"] < threshold
+                or row["answer"] == "Insufficient evidence"
+                else "Auto-ready"
+            )
+            row["reviewer_decision"] = "Pending"
+        st.session_state.rows = rows
+        st.session_state.audit.append(
+            {
+                "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "event": "assessment_completed",
+                "mode": "Transparent demo",
+                "questions": len(rows),
+                "source": "synthetic_demo_policy",
+            }
+        )
+        st.rerun()
     st.subheader("What this MVP demonstrates")
     st.markdown("- Evidence-grounded questionnaire completion\n- Structured AI output and explicit uncertainty\n- Confidence-based exception routing\n- Human approval and an exportable audit trail")
     with st.expander("Framework scope and content boundaries"):
@@ -195,49 +226,89 @@ else:
     with evaluation:
         st.subheader("Labelled 12-case synthetic evaluation")
         st.write(
-            "Compare the selected Gemini model with human-labelled synthetic positive, negative, "
-            "and insufficient-evidence cases. This controlled test is not a production-accuracy claim."
+            "The saved benchmark below compares Gemini with the transparent keyword baseline on "
+            "human-labelled synthetic positive, negative, and insufficient-evidence cases. This "
+            "controlled test is not a production-accuracy claim."
         )
-        if mode != "Gemini structured output":
-            st.info("Select Gemini structured output in the sidebar to run this evaluation.")
-        elif not api_key:
-            st.info("Enter your Gemini API key in the sidebar. The key is not written to the results file.")
-        elif st.button("Run Gemini evaluation", type="primary"):
-            with st.spinner("Evaluating 12 labelled synthetic cases in one structured request…"):
-                try:
-                    st.session_state.gemini_evaluation = run_gemini_evaluation(api_key, model)
-                except Exception as exc:
-                    error_text = str(exc)
-                    if "503" in error_text or "UNAVAILABLE" in error_text:
-                        st.error("Gemini is temporarily at capacity. Retry later or choose another model.")
-                    elif "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
-                        st.error("The request or quota limit was reached. Wait and check AI Studio Usage.")
-                    else:
-                        st.error(f"Evaluation failed: {error_text}")
+        evaluation_output = st.session_state.get(
+            "gemini_evaluation", SAVED_GEMINI_EVALUATION
+        )
+        summary = evaluation_output["summary"]
+        baseline_summary = SAVED_BASELINE_EVALUATION["summary"]
+        baseline_agreements = sum(
+            case["answer_agrees"] for case in SAVED_BASELINE_EVALUATION["cases"]
+        )
+        gemini_agreements = sum(
+            case["answer_agrees"] for case in evaluation_output["cases"]
+        )
 
-        if "gemini_evaluation" in st.session_state:
-            evaluation_output = st.session_state.gemini_evaluation
-            summary = evaluation_output["summary"]
-            e1, e2, e3, e4 = st.columns(4)
-            e1.metric("Answer agreement", f"{summary['answer_agreement_percent']}%")
-            e2.metric("Citation existence", f"{summary['citation_existence_percent']}%")
-            e3.metric("Review-routing recall", f"{summary['review_routing_recall_percent']}%")
-            e4.metric("Unsupported definitive", f"{summary['unsupported_definitive_percent']}%")
-            evaluation_df = pd.DataFrame(evaluation_output["cases"])
-            st.dataframe(
-                evaluation_df[[
-                    "case_id", "expected_answer", "actual_answer", "answer_agrees",
-                    "citation_exists", "evidence_quote"
-                ]],
-                width="stretch",
-                hide_index=True,
-            )
-            st.download_button(
-                "Download Gemini evaluation JSON",
-                json.dumps(evaluation_output, indent=2),
-                "gemini_evaluation_results.json",
-                "application/json",
-            )
+        st.caption(
+            f"Saved result: {summary['engine']} • {summary['cases']} synthetic cases • "
+            "case-level outputs included below"
+        )
+        e1, e2, e3, e4 = st.columns(4)
+        e1.metric(
+            "Answer agreement",
+            f"{gemini_agreements}/{summary['cases']}",
+            f"+{gemini_agreements - baseline_agreements} vs baseline "
+            f"({baseline_agreements}/{baseline_summary['cases']})",
+        )
+        e2.metric("Citation existence", f"{summary['citation_existence_percent']}%")
+        e3.metric("Review-routing recall", f"{summary['review_routing_recall_percent']}%")
+        e4.metric("Unsupported definitive", f"{summary['unsupported_definitive_percent']}%")
+
+        comparison_df = pd.DataFrame(
+            [
+                {
+                    "engine": "Transparent keyword baseline",
+                    "answer_agreement": f"{baseline_summary['answer_agreement_percent']}% ({baseline_agreements}/12)",
+                    "review_routing_recall": f"{baseline_summary['review_routing_recall_percent']}%",
+                    "unsupported_definitive": f"{baseline_summary['unsupported_definitive_percent']}%",
+                },
+                {
+                    "engine": summary["engine"],
+                    "answer_agreement": f"{summary['answer_agreement_percent']}% ({gemini_agreements}/12)",
+                    "review_routing_recall": f"{summary['review_routing_recall_percent']}%",
+                    "unsupported_definitive": f"{summary['unsupported_definitive_percent']}%",
+                },
+            ]
+        )
+        st.dataframe(comparison_df, width="stretch", hide_index=True)
+
+        evaluation_df = pd.DataFrame(evaluation_output["cases"])
+        st.dataframe(
+            evaluation_df[[
+                "case_id", "expected_answer", "actual_answer", "answer_agrees",
+                "citation_exists", "evidence_quote"
+            ]],
+            width="stretch",
+            hide_index=True,
+        )
+        st.download_button(
+            "Download saved evaluation JSON",
+            json.dumps(evaluation_output, indent=2),
+            "gemini_evaluation_results.json",
+            "application/json",
+        )
+
+        with st.expander("Rerun the benchmark with Gemini (optional)"):
+            if mode != "Gemini structured output":
+                st.info("Select Gemini structured output in the sidebar to rerun the benchmark.")
+            elif not api_key:
+                st.info("Enter your Gemini API key in the sidebar. The key is not written to the results file.")
+            elif st.button("Run Gemini evaluation", type="primary"):
+                with st.spinner("Evaluating 12 labelled synthetic cases in one structured request…"):
+                    try:
+                        st.session_state.gemini_evaluation = run_gemini_evaluation(api_key, model)
+                        st.rerun()
+                    except Exception as exc:
+                        error_text = str(exc)
+                        if "503" in error_text or "UNAVAILABLE" in error_text:
+                            st.error("Gemini is temporarily at capacity. Retry later or choose another model.")
+                        elif "429" in error_text or "RESOURCE_EXHAUSTED" in error_text:
+                            st.error("The request or quota limit was reached. Wait and check AI Studio Usage.")
+                        else:
+                            st.error(f"Evaluation failed: {error_text}")
 
     with audit:
         export_df = pd.DataFrame(st.session_state.rows)

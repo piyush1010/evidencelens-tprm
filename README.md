@@ -9,7 +9,7 @@
 1. Open the live demo; no account or API key is required.
 2. Keep **Transparent demo** selected.
 3. Leave the upload empty to use the included synthetic vendor policy.
-4. Click **Run assessment**.
+4. Click **Run included demo** on the main page (or **Run assessment** in the sidebar).
 5. Inspect the evidence citations and open the **Review queue** for ambiguous controls.
 
 Gemini mode is optional and requires visitors to supply their own API key for that browser
@@ -96,10 +96,9 @@ python evaluate.py
 The generated `evaluation_results.json` records both the summary and case-level failures.
 Treat this as an engineering smoke test; expand it before making portfolio-quality claims.
 
-After running a normal Gemini assessment in the app, open the **Evaluation** tab and click
-**Run Gemini evaluation**. The app evaluates the same 12 cases in one structured request,
-displays a baseline comparison, and writes `gemini_evaluation_results.json` without storing
-the API key.
+Open the **Evaluation** tab to inspect the saved case-level Gemini result and its comparison
+with the transparent baseline—no API key is required. Visitors may optionally select Gemini
+structured output and rerun the same 12 cases with their own API key. The key is not stored.
 
 ### Initial measured comparison
 

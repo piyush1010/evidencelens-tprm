@@ -27,7 +27,7 @@ class FrameworkMetadataTests(unittest.TestCase):
         enriched = enrich_framework_metadata(cached_rows)
 
         self.assertEqual(enriched[0]["nist_csf_subcategories"], "PR.AA-03")
-        self.assertEqual(enriched[0]["iso_controls"], "A.5.15 & A.8.2")
+        self.assertEqual(enriched[0]["iso_controls"], "A.5.15 & A.8.5")
 
 
 if __name__ == "__main__":
