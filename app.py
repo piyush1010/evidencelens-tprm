@@ -9,7 +9,7 @@ import streamlit as st
 from pydantic import BaseModel, Field
 from pypdf import PdfReader
 
-from assessment import QUESTIONS, SAMPLE_TEXT, demo_assess
+from assessment import QUESTIONS, SAMPLE_TEXT, demo_assess, enrich_framework_metadata
 from gemini_evaluation import run_gemini_evaluation
 
 
@@ -97,6 +97,10 @@ if "rows" not in st.session_state:
 if "audit" not in st.session_state:
     st.session_state.audit = []
 
+# A Streamlit session can survive a deployment. Enrich cached rows so results
+# created by an older app version remain compatible with the current schema.
+st.session_state.rows = enrich_framework_metadata(st.session_state.rows)
+
 if run:
     document = extract_text(upload)
     if not document.strip():
@@ -107,6 +111,7 @@ if run:
         with st.spinner("Mapping evidence to controls…"):
             try:
                 rows = gemini_assess(document, api_key, model) if mode.startswith("Gemini") else demo_assess(document)
+                rows = enrich_framework_metadata(rows)
                 for row in rows:
                     row["review_status"] = "Needs review" if row["confidence"] < threshold or row["answer"] == "Insufficient evidence" else "Auto-ready"
                     row["reviewer_decision"] = "Pending"

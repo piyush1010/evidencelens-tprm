@@ -7,6 +7,25 @@ QUESTIONS = json.loads((ROOT / "questions.json").read_text())
 SAMPLE_TEXT = (ROOT / "sample_vendor_policy.txt").read_text()
 
 
+def enrich_framework_metadata(rows: list[dict]) -> list[dict]:
+    """Attach current framework metadata to new or cached assessment rows."""
+    question_map = {question["id"]: question for question in QUESTIONS}
+    for row in rows:
+        question = question_map.get(row.get("question_id"))
+        if not question:
+            continue
+        row["control_id"] = question["control_id"]
+        row["iso_controls"] = " & ".join(
+            question["iso_27001_2022_annex_a_controls"]
+        )
+        row["nist_csf_subcategories"] = " & ".join(
+            question["nist_csf_2_0_subcategories"]
+        )
+        row["domain"] = question["domain"]
+        row["question"] = question["question"]
+    return rows
+
+
 def sentences(text: str) -> list[str]:
     return [
         sentence.strip()
