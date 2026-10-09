@@ -29,6 +29,15 @@ class FrameworkMetadataTests(unittest.TestCase):
         self.assertEqual(enriched[0]["nist_csf_subcategories"], "PR.AA-03")
         self.assertEqual(enriched[0]["iso_controls"], "A.5.15 & A.8.5")
 
+    def test_incident_quote_is_relevant_to_notification(self) -> None:
+        results = demo_assess(SAMPLE_TEXT)
+        incident_result = next(
+            row for row in results if row["question_id"] == "DEMO-IR-01"
+        )
+
+        self.assertIn("Customers are notified", incident_result["evidence_quote"])
+        self.assertNotIn("employment ends", incident_result["evidence_quote"])
+
 
 if __name__ == "__main__":
     unittest.main()

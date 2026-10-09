@@ -27,9 +27,18 @@ def enrich_framework_metadata(rows: list[dict]) -> list[dict]:
 
 
 def sentences(text: str) -> list[str]:
+    # Join wrapped lines inside each paragraph before splitting sentences. PDF
+    # and plain-text policies often wrap sentences across lines; treating every
+    # line as a separate passage can make an unrelated keyword look like the
+    # closest evidence.
+    normalized_paragraphs = [
+        " ".join(line.strip() for line in paragraph.splitlines() if line.strip())
+        for paragraph in re.split(r"\n\s*\n", text)
+    ]
     return [
         sentence.strip()
-        for sentence in re.split(r"(?<=[.!?])\s+|\n+", text)
+        for paragraph in normalized_paragraphs
+        for sentence in re.split(r"(?<=[.!?])\s+", paragraph)
         if len(sentence.strip()) > 20
     ]
 
@@ -44,10 +53,11 @@ def demo_assess(text: str) -> list[dict]:
         matched_terms = [
             keyword for keyword in question["keywords"] if keyword in text_lower
         ]
+        evidence_keywords = question.get("evidence_keywords", question["keywords"])
         ranked = sorted(
             chunks,
             key=lambda sentence: sum(
-                keyword in sentence.lower() for keyword in question["keywords"]
+                keyword in sentence.lower() for keyword in evidence_keywords
             ),
             reverse=True,
         )

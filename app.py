@@ -106,6 +106,8 @@ if "rows" not in st.session_state:
     st.session_state.rows = []
 if "audit" not in st.session_state:
     st.session_state.audit = []
+if "last_assessment_mode" not in st.session_state:
+    st.session_state.last_assessment_mode = None
 
 # A Streamlit session can survive a deployment. Enrich cached rows so results
 # created by an older app version remain compatible with the current schema.
@@ -126,6 +128,7 @@ if run:
                     row["review_status"] = "Needs review" if row["confidence"] < threshold or row["answer"] == "Insufficient evidence" else "Auto-ready"
                     row["reviewer_decision"] = "Pending"
                 st.session_state.rows = rows
+                st.session_state.last_assessment_mode = mode
                 st.session_state.audit.append({
                     "timestamp_utc": datetime.now(timezone.utc).isoformat(), "event": "assessment_completed",
                     "mode": mode, "questions": len(rows), "source": upload.name if upload else "synthetic_demo_policy",
@@ -158,6 +161,7 @@ if not st.session_state.rows:
             )
             row["reviewer_decision"] = "Pending"
         st.session_state.rows = rows
+        st.session_state.last_assessment_mode = "Transparent demo"
         st.session_state.audit.append(
             {
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -168,6 +172,10 @@ if not st.session_state.rows:
             }
         )
         st.rerun()
+    st.caption(
+        "The included no-key demo uses a transparent keyword baseline—not Gemini. "
+        "Gemini analysis is optional."
+    )
     st.subheader("What this MVP demonstrates")
     st.markdown("- Evidence-grounded questionnaire completion\n- Structured AI output and explicit uncertainty\n- Confidence-based exception routing\n- Human approval and an exportable audit trail")
     with st.expander("Framework scope and content boundaries"):
@@ -178,6 +186,14 @@ if not st.session_state.rows:
         )
 else:
     df = pd.DataFrame(st.session_state.rows)
+    assessment_mode = st.session_state.last_assessment_mode or "Transparent demo"
+    if assessment_mode == "Transparent demo":
+        st.info(
+            "Analysis engine: transparent keyword baseline (not Gemini). It surfaces the "
+            "closest matching text and routes incomplete evidence to human review."
+        )
+    else:
+        st.info(f"Analysis engine: {model} with Gemini structured output.")
     needs_review = ((df.review_status == "Needs review")).sum()
     supported = (df.answer == "Yes").sum()
     c1, c2, c3, c4 = st.columns(4)
@@ -198,7 +214,12 @@ else:
                     f"Demo control: {row['control_id']} · Illustrative ISO 27001:2022 Annex A: "
                     f"{row['iso_controls']} · Illustrative NIST CSF 2.0: {row['nist_csf_subcategories']}"
                 )
-                st.markdown(f"**Evidence:** “{row['evidence_quote']}”")
+                quote_label = (
+                    "Closest text found (not sufficient)"
+                    if row["answer"] == "Insufficient evidence"
+                    else "Supporting evidence"
+                )
+                st.markdown(f"**{quote_label}:** “{row['evidence_quote']}”")
                 st.write(row["rationale"])
                 if row["gap_or_follow_up"]:
                     st.warning(row["gap_or_follow_up"])
@@ -214,7 +235,12 @@ else:
                 f"{row['iso_controls']} · Illustrative NIST CSF 2.0: {row['nist_csf_subcategories']}"
             )
             st.caption(f"AI answer: {row['answer']} · Confidence: {row['confidence']}%")
-            st.write(f"Evidence: “{row['evidence_quote']}”")
+            quote_label = (
+                "Closest text found (not sufficient)"
+                if row["answer"] == "Insufficient evidence"
+                else "Supporting evidence"
+            )
+            st.markdown(f"**{quote_label}:** “{row['evidence_quote']}”")
             decision = st.selectbox("Reviewer decision", ["Pending", "Approve", "Reject", "Request evidence"],
                                     key=f"decision-{row['question_id']}")
             if decision != row["reviewer_decision"]:

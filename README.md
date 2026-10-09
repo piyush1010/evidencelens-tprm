@@ -30,6 +30,7 @@ interview preparation, see [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 - Route ambiguous or low-confidence answers to a human review queue.
 - Capture reviewer decisions in an audit log and export the assessment as CSV.
 - Run without an API key using a transparent keyword baseline, or use Gemini structured output.
+- Clearly label the no-key demo as the keyword baseline and distinguish insufficient closest-text matches from supporting evidence.
 
 ## Run locally
 

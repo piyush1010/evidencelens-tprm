@@ -24,7 +24,8 @@
     "nist_csf_2_0_subcategories": ["RS.CO-02"],
     "domain": "Incident Response",
     "question": "Does the vendor guarantee security incident notification to customers within 24 hours?",
-    "keywords": ["security incident", "customers", "within 24 hours", "notification"]
+    "keywords": ["security incident", "customers", "within 24 hours", "notification"],
+    "evidence_keywords": ["security incident", "incident", "customers", "notification", "notified", "without undue delay"]
   },
   {
     "id": "DEMO-VR-01",
