@@ -151,6 +151,7 @@ def run_assessment(document: str, use_gemini: bool, source: str) -> None:
             st.session_state.rows = rows
             for key in [k for k in st.session_state if str(k).startswith("decision-")]:
                 del st.session_state[key]  # fresh assessment, fresh review decisions
+            st.session_state.risk_decisions = []  # earlier risk decisions were based on the old findings
             st.session_state.audit.append({
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(), "event": "assessment_completed",
                 "mode": "Gemini structured output" if use_gemini else "Transparent demo",
@@ -325,6 +326,11 @@ with evaluation:
             evaluation_output = st.session_state.gemini_evaluation
             summary = evaluation_output["summary"]
             st.markdown(f"**Your run** · `{summary['engine']}`")
+            if summary.get("latency_seconds") is not None:
+                st.caption(
+                    f"{summary['latency_seconds']} s for {summary['cases']} cases · "
+                    f"{summary.get('input_tokens') or '?'} input / {summary.get('output_tokens') or '?'} output tokens"
+                )
             e1, e2, e3, e4 = st.columns(4)
             e1.metric("Answer agreement", f"{summary['answer_agreement_percent']}%")
             e2.metric("Citation existence", f"{summary['citation_existence_percent']}%")

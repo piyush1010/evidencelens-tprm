@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 from typing import Literal
 
@@ -34,6 +35,7 @@ ambiguous. The evidence_quote must be an exact excerpt from the case evidence.
 EVALUATION CASES:
 {json.dumps(CASES, indent=2)}
 """
+    started = time.perf_counter()
     response = client.models.generate_content(
         model=model,
         contents=prompt,
@@ -42,6 +44,8 @@ EVALUATION CASES:
             "response_schema": EvaluationBatch,
         },
     )
+    latency_seconds = round(time.perf_counter() - started, 2)
+    usage = getattr(response, "usage_metadata", None)
     batch = EvaluationBatch.model_validate_json(response.text)
     predictions = {item.case_id: item for item in batch.predictions}
     results = []
@@ -82,6 +86,9 @@ EVALUATION CASES:
     summary = {
         "engine": model,
         "cases": total,
+        "latency_seconds": latency_seconds,
+        "input_tokens": getattr(usage, "prompt_token_count", None),
+        "output_tokens": getattr(usage, "candidates_token_count", None),
         "answer_agreement_percent": round(
             100 * sum(row["answer_agrees"] for row in results) / total, 1
         ),

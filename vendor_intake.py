@@ -39,6 +39,7 @@ def save_vendor(profile: VendorProfile) -> None:
     inherent = score_inherent_risk(profile)
     st.session_state.vendor = profile.to_dict()
     st.session_state.inherent = inherent.to_dict()
+    st.session_state.risk_decisions = []  # a decision applies to one vendor profile only
     st.session_state.audit.append({
         "timestamp_utc": _now(), "event": "vendor_profile_saved",
         "vendor_name": profile.vendor_name, "inherent_score": inherent.score,
