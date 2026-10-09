@@ -11,6 +11,10 @@ from pypdf import PdfReader
 
 from assessment import QUESTIONS, SAMPLE_TEXT, demo_assess
 from gemini_evaluation import run_gemini_evaluation
+from vendor_intake import (
+    SAMPLE_VENDOR, current_residual, render_inherent_risk, render_intake_form,
+    render_residual_and_decision, save_vendor,
+)
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -78,15 +82,23 @@ VENDOR EVIDENCE:
         config={"response_mime_type": "application/json", "response_schema": AssessmentBatch},
     )
     parsed = AssessmentBatch.model_validate_json(response.text)
-    question_map = {q["id"]: q for q in QUESTIONS}
-    return [
-        {**item.model_dump(),
-         "control_id": question_map[item.question_id]["control_id"],
-         "iso_controls": " & ".join(question_map[item.question_id]["iso_27001_2022_annex_a_controls"]),
-         "domain": question_map[item.question_id]["domain"],
-         "question": question_map[item.question_id]["question"]}
-        for item in parsed.assessments if item.question_id in question_map
-    ]
+    answers = {item.question_id: item.model_dump() for item in parsed.assessments}
+    rows = []
+    for q in QUESTIONS:  # one row per question, in order, even if the model skipped one
+        answer = answers.get(q["id"]) or {
+            "question_id": q["id"], "answer": "Insufficient evidence", "confidence": 0,
+            "evidence_quote": "", "rationale": "The model returned no answer for this question.",
+            "gap_or_follow_up": "Re-run the assessment or answer this question manually.",
+        }
+        rows.append({**answer, "control_id": q["control_id"],
+                     "iso_controls": " & ".join(q["iso_27001_2022_annex_a_controls"]),
+                     "domain": q["domain"], "question": q["question"]})
+    return rows
+
+
+def quote_in_source(quote: str, document: str) -> bool:
+    normalize = lambda text: " ".join(text.lower().split())
+    return bool(quote.strip()) and normalize(quote) in normalize(document)
 
 
 st.set_page_config(page_title="EvidenceLens", page_icon="🛡️", layout="wide")
@@ -113,6 +125,9 @@ if "rows" not in st.session_state:
     st.session_state.rows = []
 if "audit" not in st.session_state:
     st.session_state.audit = []
+for key, default in (("vendor", None), ("inherent", None), ("risk_decisions", [])):
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 def run_assessment(document: str, use_gemini: bool, source: str) -> None:
     if not document.strip():
@@ -125,9 +140,17 @@ def run_assessment(document: str, use_gemini: bool, source: str) -> None:
         try:
             rows = gemini_assess(document, api_key, model) if use_gemini else demo_assess(document)
             for row in rows:
-                row["review_status"] = "Needs review" if row["confidence"] < threshold or row["answer"] == "Insufficient evidence" else "Auto-ready"
+                cited = row["answer"] == "Insufficient evidence" or quote_in_source(row["evidence_quote"], document)
+                row["citation_verified"] = cited
+                if not cited:
+                    row["gap_or_follow_up"] = ("Cited quote was not found verbatim in the document; verify it. "
+                                               + row["gap_or_follow_up"]).strip()
+                needs_review = row["confidence"] < threshold or row["answer"] == "Insufficient evidence" or not cited
+                row["review_status"] = "Needs review" if needs_review else "Auto-ready"
                 row["reviewer_decision"] = "Pending"
             st.session_state.rows = rows
+            for key in [k for k in st.session_state if str(k).startswith("decision-")]:
+                del st.session_state[key]  # fresh assessment, fresh review decisions
             st.session_state.audit.append({
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(), "event": "assessment_completed",
                 "mode": "Gemini structured output" if use_gemini else "Transparent demo",
@@ -160,12 +183,23 @@ else:
     demo_clicked = False
 
 if demo_clicked:
+    if not st.session_state.vendor:
+        save_vendor(SAMPLE_VENDOR)
     run_assessment(SAMPLE_TEXT, use_gemini=False, source="synthetic_demo_policy")
     if st.session_state.rows:
         st.rerun()  # redraw without the one-click banner
 elif run:
     run_assessment(extract_text(upload), use_gemini=mode.startswith("Gemini"),
                    source=upload.name if upload else "synthetic_demo_policy")
+
+# Apply review-queue decisions before any tab renders, so the residual-risk summary is current.
+for row in st.session_state.rows:
+    decision = st.session_state.get(f"decision-{row['question_id']}")
+    if decision is not None and decision != row["reviewer_decision"]:
+        row["reviewer_decision"] = decision
+        st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            "event": "review_decision", "question_id": row["question_id"], "decision": decision,
+            "reviewer": st.session_state.get("reviewer_name", "").strip() or "unnamed"})
 
 has_rows = bool(st.session_state.rows)
 if has_rows:
@@ -178,9 +212,16 @@ if has_rows:
     c3.metric("Needs human review", int(needs_review))
     c4.metric("Average confidence", f"{df.confidence.mean():.0f}%")
 
-overview, review, evaluation, audit = st.tabs(
-    ["Assessment", "Review queue", "Evaluation", "Audit & export"]
+vendor_tab, overview, review, evaluation, audit = st.tabs(
+    ["Vendor & risk", "Assessment", "Review queue", "Evaluation", "Audit & export"]
 )
+
+with vendor_tab:
+    render_intake_form()
+    st.divider()
+    render_inherent_risk()
+    st.divider()
+    render_residual_and_decision()
 
 with overview:
     if not has_rows:
@@ -202,6 +243,8 @@ with overview:
 with review:
     if not has_rows:
         st.info("Run an assessment to populate the review queue.")
+    else:
+        reviewer_name = st.text_input("Your name (recorded with each decision)", key="reviewer_name")
     review_rows = [r for r in st.session_state.rows if r["review_status"] == "Needs review"]
     if has_rows and not review_rows:
         st.success("No exceptions require review at this threshold.")
@@ -212,10 +255,6 @@ with review:
         st.write(f"Evidence: “{row['evidence_quote']}”")
         decision = st.selectbox("Reviewer decision", ["Pending", "Approve", "Reject", "Request evidence"],
                                 key=f"decision-{row['question_id']}")
-        if decision != row["reviewer_decision"]:
-            row["reviewer_decision"] = decision
-            st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
-                "event": "review_decision", "question_id": row["question_id"], "decision": decision})
         st.divider()
 
 with evaluation:
@@ -312,10 +351,26 @@ with audit:
         st.info("Run an assessment to export results and the audit log.")
     else:
         export_df = pd.DataFrame(st.session_state.rows)
+        residual = current_residual()
+        latest_decision = st.session_state.risk_decisions[-1] if st.session_state.risk_decisions else {}
+        if st.session_state.vendor:
+            export_df.insert(0, "vendor_name", st.session_state.vendor["vendor_name"])
+            export_df["inherent_tier"] = st.session_state.inherent["tier"]
+            export_df["inherent_score"] = st.session_state.inherent["score"]
+        if residual:
+            export_df["recommended_residual_tier"] = residual["residual_tier"]
+            export_df["recommendation"] = residual["recommendation"]
+        if latest_decision:
+            export_df["final_decision"] = latest_decision["final_decision"]
+            export_df["final_residual_tier"] = latest_decision["final_residual_tier"]
         st.download_button("Download assessment CSV", export_df.to_csv(index=False),
                            "vendor_assessment.csv", "text/csv")
         st.download_button("Download audit log JSON", json.dumps(st.session_state.audit, indent=2),
                            "audit_log.json", "application/json")
+        st.download_button("Download vendor risk summary JSON", json.dumps({
+            "vendor": st.session_state.vendor, "inherent_risk": st.session_state.inherent,
+            "residual_risk_recommendation": residual, "decisions": st.session_state.risk_decisions,
+        }, indent=2), "vendor_risk_summary.json", "application/json")
         st.json(st.session_state.audit)
 
 st.divider()
