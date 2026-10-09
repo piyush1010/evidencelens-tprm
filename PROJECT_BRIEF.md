@@ -130,6 +130,25 @@ Four security controls cannot represent the vendor's total inherent and residual
 decision also requires privacy, legal, financial, operational, geographic, and business-criticality
 context.
 
+The app now captures some of that context through vendor intake, but it still stops at a
+*recommendation*. A named risk owner records the final tier and decision, and any override
+requires a reason.
+
+### Why score inherent risk with rules instead of the LLM?
+
+Inherent risk drives how much diligence a vendor gets, so it must be explainable and repeatable.
+`risk_scoring.py` adds fixed points for each intake answer (data sensitivity, volume, production
+and privileged access, criticality, dependency, subprocessors, regulation, replaceability) and
+shows exactly which answers contributed. Privileged access to financial or health data sets a
+minimum tier of High. The same inputs always give the same tier, and the rules are unit-tested.
+
+### How is residual risk recommended?
+
+Residual risk starts from the inherent tier. If every assessed control is supported by cited
+evidence, it drops one tier. Missing evidence keeps it at the inherent tier, and contradicted
+controls lead to remediation, escalation or, for Critical vendors, rejection. While findings are
+still awaiting human review, the recommendation is marked provisional.
+
 ## 10. Success metrics
 
 An initial 12-case synthetic evaluation has been run against both the transparent keyword baseline
@@ -169,14 +188,16 @@ queue.
 - Results are stored only in the current browser session; there is no persistent database.
 - There is no authentication, tenant isolation, role-based access, or production security model.
 - Framework mappings are illustrative and need validation against authoritative licensed sources.
-- The Gemini path still needs a labelled evaluation before quality claims can be made.
-- It supports an assessment step, not the entire TPRM lifecycle.
+- The Gemini path has only a 12-case synthetic evaluation; it is not evidence of general accuracy.
+- Inherent-risk weights and tier bands are illustrative and would need calibration with a risk team.
+- Residual risk does not yet consider compensating controls, contractual protections or remediation dates.
+- It covers intake, assessment and a decision record, not contracting, monitoring or offboarding.
 
 ## 12. Sensible next iterations
 
-1. Build and label an evaluation dataset.
-2. Add question criticality and evidence-quality fields.
-3. Add a limited control-gap summary without claiming to approve the vendor.
+1. Expand the labelled evaluation beyond 12 synthetic cases.
+2. Add question criticality and evidence-quality fields, and weight residual risk by them.
+3. Record compensating controls, contract clauses and accepted exceptions in the residual summary.
 4. Add privacy and operational due-diligence domains.
 5. Add OCR for scanned documents.
 6. Persist vendors, assessments, findings, and audit events in a database.
