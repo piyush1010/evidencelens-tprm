@@ -161,7 +161,7 @@ VENDOR EVIDENCE:
 st.set_page_config(page_title="EvidenceLens", page_icon="🛡️", layout="wide")
 st.title("EvidenceLens")
 st.caption("AI-assisted third-party security questionnaire review • Evidence first, human approved")
-render_guide()
+render_guide(has_results=bool(st.session_state.get("rows")))
 
 with st.sidebar:
     st.header("Assessment setup")

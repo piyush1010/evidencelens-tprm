@@ -8,7 +8,7 @@ STEPS = [
      "reading long security policies by hand. EvidenceLens reads the policy for you and answers "
      "each security question with the exact sentence it found as proof."),
     ("Start in one click",
-     "Pick a sample policy below and press **Run**. You don't need an account or an API key. "
+     "Pick a sample policy below and press **Run selected sample**. You don't need an account or an API key. "
      "To try your own document, upload it in the left panel and press **Run assessment**."),
     ("Vendor & risk",
      "Describe the vendor: what data they handle, how much you depend on them. EvidenceLens gives a "
@@ -25,6 +25,34 @@ STEPS = [
      "**Evaluation** shows how accurate the tool was on a labelled test set. **Audit & export** keeps "
      "a record of every decision and lets you download the results."),
 ]
+
+# What the animated hand points at on each step (CSS selectors; None = no target).
+TAB = '[data-baseweb="tab-list"] [data-baseweb="tab"]:nth-of-type({})'
+TARGETS = [
+    None,
+    '.st-key-landing-run-sample button, [data-testid="stSidebar"] [data-testid="stFileUploader"]',
+    TAB.format(1),
+    TAB.format(2),
+    TAB.format(3),
+    TAB.format(4) + ", " + TAB.format(5),
+]
+TAB_STEPS = {2, 3, 4, 5}
+
+HAND_CSS = """
+<style>
+@keyframes el-nudge {{ 0%, 100% {{ transform: translateX(0); }} 50% {{ transform: translateX(-8px); }} }}
+@keyframes el-glow {{ 0%, 100% {{ box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.55); }}
+                      50% {{ box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }} }}
+@keyframes el-wave {{ 0%, 60%, 100% {{ transform: rotate(0); }} 15%, 45% {{ transform: rotate(16deg); }}
+                      30% {{ transform: rotate(-8deg); }} }}
+{targets} {{ background-color: rgba(245, 158, 11, 0.16) !important; border-radius: 8px;
+             animation: el-glow 1.6s ease-out infinite; }}
+{targets_after} {{ content: "👈"; display: inline-block; margin-left: 8px; font-size: 1.3em;
+                   animation: el-nudge 1s ease-in-out infinite; }}
+.el-wave {{ display: inline-block; transform-origin: 70% 70%; animation: el-wave 2s ease-in-out infinite; }}
+@media (prefers-reduced-motion: reduce) {{ .el-wave, {targets}, {targets_after} {{ animation: none !important; }} }}
+</style>
+"""
 
 TAB_HELP = {
     "vendor": "Who is the vendor, how risky are they to start with, and what is the final decision?",
@@ -44,7 +72,17 @@ GLOSSARY = """
 """
 
 
-def render_guide() -> None:
+def _point_hand(step: int) -> None:
+    """Highlight the element this step talks about and point an animated hand at it."""
+    target = TARGETS[step]
+    selectors = [part.strip() for part in target.split(",")] if target else [".el-none"]
+    st.markdown(HAND_CSS.format(
+        targets=", ".join(selectors),
+        targets_after=", ".join(sel + "::after" for sel in selectors),
+    ), unsafe_allow_html=True)
+
+
+def render_guide(has_results: bool = False) -> None:
     """Show the step-by-step guide on a first visit, with a sidebar button to reopen it."""
     if "guide_step" not in st.session_state:
         st.session_state.guide_step = 0  # first visit: open the guide
@@ -55,10 +93,14 @@ def render_guide() -> None:
     if step is None:
         return
     title, text = STEPS[step]
+    _point_hand(step)
     with st.container(border=True):
         st.caption(f"Quick guide · step {step + 1} of {len(STEPS)}")
-        st.markdown(f"**{title}**")
+        hand = '<span class="el-wave">👋</span> ' if step == 0 else "👉 "
+        st.markdown(f"{hand}**{title}**", unsafe_allow_html=True)
         st.markdown(text)
+        if step in TAB_STEPS and not has_results:
+            st.info("Run a sample first. The hand will then point to this tab.")
         back, nxt, skip = st.columns([1, 1, 1])
         if back.button("← Back", disabled=step == 0, key="guide_back", width="stretch"):
             st.session_state.guide_step = step - 1
