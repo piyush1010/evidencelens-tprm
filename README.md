@@ -32,6 +32,8 @@ interview preparation, see [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 - Run without an API key using a transparent keyword baseline, or use Gemini structured output.
 - Clearly label the no-key demo as the keyword baseline and distinguish insufficient closest-text matches from supporting evidence.
 - Offer downloadable strong-control, mixed-evidence, and evidence-gap sample policies for interviewer testing.
+- Capture a vendor profile and calculate a rule-based **inherent-risk tier**, showing which answers drove it.
+- Combine the inherent tier with the findings into a **residual-risk recommendation** that a named risk owner approves or overrides with a recorded reason (see the **Vendor & risk** tab).
 
 ## Run locally
 
