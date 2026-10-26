@@ -54,6 +54,29 @@ HAND_CSS = """
 </style>
 """
 
+CARD_CSS = """
+<style>
+@keyframes el-slide {{ from {{ opacity: 0; transform: translateY(24px); }} to {{ opacity: 1; transform: none; }} }}
+.st-key-guide-card {{
+  position: fixed; right: 24px; bottom: 24px; z-index: 1000;
+  width: min(400px, calc(100vw - 32px)); max-height: calc(100vh - 120px); overflow-y: auto;
+  background: {bg}; color: {fg}; padding: 16px 18px; border-radius: 14px;
+  border: 1px solid {border}; box-shadow: 0 12px 32px rgba(0, 0, 0, {shadow});
+  animation: el-slide 0.35s ease-out;
+}}
+@media (max-width: 640px) {{ .st-key-guide-card {{ right: 16px; bottom: 16px; }} }}
+@media (prefers-reduced-motion: reduce) {{ .st-key-guide-card {{ animation: none; }} }}
+</style>
+"""
+
+
+def _theme_is_dark() -> bool:
+    try:
+        return st.context.theme.type == "dark"
+    except Exception:
+        return False
+
+
 TAB_HELP = {
     "vendor": "Who is the vendor, how risky are they to start with, and what is the final decision?",
     "assessment": "Every question with its answer, the quote used as proof, and the confidence.",
@@ -94,7 +117,12 @@ def render_guide(has_results: bool = False) -> None:
         return
     title, text = STEPS[step]
     _point_hand(step)
-    with st.container(border=True):
+    dark = _theme_is_dark()
+    st.markdown(CARD_CSS.format(
+        bg="#1f2430" if dark else "#ffffff", fg="#f3f4f6" if dark else "#1f2937",
+        border="#3a4150" if dark else "#e5e7eb", shadow="0.5" if dark else "0.18",
+    ), unsafe_allow_html=True)
+    with st.container(key="guide-card"):
         st.caption(f"Quick guide · step {step + 1} of {len(STEPS)}")
         hand = '<span class="el-wave">👋</span> ' if step == 0 else "👉 "
         st.markdown(f"{hand}**{title}**", unsafe_allow_html=True)
