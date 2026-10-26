@@ -45,7 +45,7 @@ HAND_CSS = """
                       50% {{ box-shadow: 0 0 0 6px rgba(245, 158, 11, 0); }} }}
 @keyframes el-wave {{ 0%, 60%, 100% {{ transform: rotate(0); }} 15%, 45% {{ transform: rotate(16deg); }}
                       30% {{ transform: rotate(-8deg); }} }}
-{targets} {{ background-color: rgba(245, 158, 11, 0.16) !important; border-radius: 8px;
+{targets} {{ outline: 3px solid #f59e0b !important; outline-offset: 3px; border-radius: 8px;
              animation: el-glow 1.6s ease-out infinite; }}
 {targets_after} {{ content: "👈"; display: inline-block; margin-left: 8px; font-size: 1.3em;
                    animation: el-nudge 1s ease-in-out infinite; }}
