@@ -18,6 +18,10 @@ from assessment import (
     enrich_framework_metadata,
 )
 from gemini_evaluation import run_gemini_evaluation
+from vendor_intake import (
+    SAMPLE_VENDOR, current_residual, render_inherent_risk, render_intake_form,
+    render_residual_and_decision, save_vendor,
+)
 
 
 ROOT = Path(__file__).parent
@@ -69,6 +73,13 @@ def store_assessment(rows: list[dict], mode: str, source: str) -> None:
     """Persist one assessment and its completion event for this browser session."""
     st.session_state.rows = rows
     st.session_state.last_assessment_mode = mode
+    # A new assessment starts a fresh review: clear old reviewer choices and the risk
+    # decisions that were based on the previous findings.
+    for key in [k for k in st.session_state if str(k).startswith("decision-")]:
+        del st.session_state[key]
+    st.session_state.risk_decisions = []
+    if source.startswith("sample:") and not st.session_state.get("vendor"):
+        save_vendor(SAMPLE_VENDOR)  # samples come with an example vendor profile
     st.session_state.audit.append(
         {
             "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -172,6 +183,9 @@ if "audit" not in st.session_state:
     st.session_state.audit = []
 if "last_assessment_mode" not in st.session_state:
     st.session_state.last_assessment_mode = None
+for key, default in (("vendor", None), ("inherent", None), ("risk_decisions", [])):
+    if key not in st.session_state:
+        st.session_state[key] = default
 
 # A Streamlit session can survive a deployment. Enrich cached rows so results
 # created by an older app version remain compatible with the current schema.
@@ -226,6 +240,9 @@ if not st.session_state.rows:
     )
     st.subheader("What this MVP demonstrates")
     st.markdown("- Evidence-grounded questionnaire completion\n- Structured AI output and explicit uncertainty\n- Confidence-based exception routing\n- Human approval and an exportable audit trail")
+    with st.expander("Optional: add vendor details for a risk tier"):
+        render_intake_form()
+        render_inherent_risk()
     with st.expander("Framework scope and content boundaries"):
         st.markdown(
             "- Questions are original demonstration content, not the proprietary Shared Assessments SIG questionnaire.\n"
@@ -252,17 +269,35 @@ else:
                 f"sample:{selected_sample['id']}",
             )
             st.rerun()
-    needs_review = ((df.review_status == "Needs review")).sum()
     supported = (df.answer == "Yes").sum()
+    awaiting = sum(
+        1 for r in st.session_state.rows
+        if r["review_status"] == "Needs review"
+        and st.session_state.get(f"decision-{r['question_id']}", r["reviewer_decision"]) == "Pending"
+    )
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Questions assessed", len(df))
     c2.metric("Supported", int(supported))
-    c3.metric("Needs human review", int(needs_review))
+    c3.metric("Awaiting human review", int(awaiting))
     c4.metric("Average confidence", f"{df.confidence.mean():.0f}%")
 
-    overview, review, evaluation, audit = st.tabs(
-        ["Assessment", "Review queue", "Evaluation", "Audit & export"]
+    # Apply review decisions before any tab renders, so the residual-risk summary is current.
+    for row in st.session_state.rows:
+        decision = st.session_state.get(f"decision-{row['question_id']}")
+        if decision is not None and decision != row["reviewer_decision"]:
+            row["reviewer_decision"] = decision
+            st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
+                "event": "review_decision", "question_id": row["question_id"], "decision": decision})
+
+    vendor_tab, overview, review, evaluation, audit = st.tabs(
+        ["Vendor & risk", "Assessment", "Review queue", "Evaluation", "Audit & export"]
     )
+    with vendor_tab:
+        render_intake_form()
+        st.divider()
+        render_inherent_risk()
+        st.divider()
+        render_residual_and_decision()
     with overview:
         st.dataframe(df[["control_id", "iso_controls", "nist_csf_subcategories", "domain", "answer", "confidence", "review_status", "gap_or_follow_up"]],
                      width="stretch", hide_index=True)
@@ -305,6 +340,8 @@ else:
                 row["reviewer_decision"] = decision
                 st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
                     "event": "review_decision", "question_id": row["question_id"], "decision": decision})
+            if decision != "Pending":
+                st.success(f"Saved: {decision}. The residual risk in the Vendor & risk tab now reflects this decision.")
             st.divider()
 
     with evaluation:
@@ -396,10 +433,27 @@ else:
 
     with audit:
         export_df = pd.DataFrame(st.session_state.rows)
+        residual = current_residual()
+        latest_decision = st.session_state.risk_decisions[-1] if st.session_state.risk_decisions else {}
+        if st.session_state.vendor and st.session_state.inherent:
+            export_df.insert(0, "vendor_name", st.session_state.vendor["vendor_name"])
+            export_df["inherent_tier"] = st.session_state.inherent["tier"]
+            export_df["inherent_score"] = st.session_state.inherent["score"]
+        if residual:
+            export_df["recommended_residual_tier"] = residual["residual_tier"]
+            export_df["recommendation"] = residual["recommendation"]
+        if latest_decision:
+            export_df["final_decision"] = latest_decision["final_decision"]
+            export_df["final_residual_tier"] = latest_decision["final_residual_tier"]
         st.download_button("Download assessment CSV", export_df.to_csv(index=False),
                            "vendor_assessment.csv", "text/csv")
         st.download_button("Download audit log JSON", json.dumps(st.session_state.audit, indent=2),
                            "audit_log.json", "application/json")
+        if st.session_state.vendor:
+            st.download_button("Download vendor risk summary JSON", json.dumps({
+                "vendor": st.session_state.vendor, "inherent_risk": st.session_state.inherent,
+                "residual_risk_recommendation": residual, "decisions": st.session_state.risk_decisions,
+            }, indent=2), "vendor_risk_summary.json", "application/json")
         st.json(st.session_state.audit)
 
 st.divider()
