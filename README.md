@@ -24,6 +24,7 @@ interview preparation, see [PROJECT_BRIEF.md](PROJECT_BRIEF.md).
 
 ## What the demo proves
 
+- Open with a six-step plain-language guide for first-time visitors (reopen it any time from **📘 How this app works** in the sidebar), one-line help on every tab and a short glossary.
 - Upload PDF/TXT/Markdown vendor evidence.
 - Map evidence to four original demo controls with illustrative ISO 27001:2022 Annex A and NIST CSF 2.0 references.
 - Return a structured answer, exact evidence quote, rationale, confidence and follow-up.

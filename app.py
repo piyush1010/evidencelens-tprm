@@ -18,6 +18,7 @@ from assessment import (
     enrich_framework_metadata,
 )
 from gemini_evaluation import run_gemini_evaluation
+from guide import TAB_HELP, render_guide
 from vendor_intake import (
     SAMPLE_VENDOR, current_residual, render_inherent_risk, render_intake_form,
     render_residual_and_decision, save_vendor,
@@ -160,6 +161,7 @@ VENDOR EVIDENCE:
 st.set_page_config(page_title="EvidenceLens", page_icon="🛡️", layout="wide")
 st.title("EvidenceLens")
 st.caption("AI-assisted third-party security questionnaire review • Evidence first, human approved")
+render_guide()
 
 with st.sidebar:
     st.header("Assessment setup")
@@ -293,12 +295,14 @@ else:
         ["Vendor & risk", "Assessment", "Review queue", "Evaluation", "Audit & export"]
     )
     with vendor_tab:
+        st.caption(TAB_HELP["vendor"])
         render_intake_form()
         st.divider()
         render_inherent_risk()
         st.divider()
         render_residual_and_decision()
     with overview:
+        st.caption(TAB_HELP["assessment"])
         st.dataframe(df[["control_id", "iso_controls", "nist_csf_subcategories", "domain", "answer", "confidence", "review_status", "gap_or_follow_up"]],
                      width="stretch", hide_index=True)
         for row in st.session_state.rows:
@@ -318,6 +322,7 @@ else:
                     st.warning(row["gap_or_follow_up"])
 
     with review:
+        st.caption(TAB_HELP["review"])
         review_rows = [r for r in st.session_state.rows if r["review_status"] == "Needs review"]
         if not review_rows:
             st.success("No exceptions require review at this threshold.")
@@ -345,6 +350,7 @@ else:
             st.divider()
 
     with evaluation:
+        st.caption(TAB_HELP["evaluation"])
         st.subheader("Labelled 12-case synthetic evaluation")
         st.write(
             "The saved benchmark below compares Gemini with the transparent keyword baseline on "
@@ -432,6 +438,7 @@ else:
                             st.error(f"Evaluation failed: {error_text}")
 
     with audit:
+        st.caption(TAB_HELP["audit"])
         export_df = pd.DataFrame(st.session_state.rows)
         residual = current_residual()
         latest_decision = st.session_state.risk_decisions[-1] if st.session_state.risk_decisions else {}
