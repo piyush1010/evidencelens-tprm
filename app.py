@@ -269,12 +269,16 @@ else:
                 f"sample:{selected_sample['id']}",
             )
             st.rerun()
-    needs_review = ((df.review_status == "Needs review")).sum()
     supported = (df.answer == "Yes").sum()
+    awaiting = sum(
+        1 for r in st.session_state.rows
+        if r["review_status"] == "Needs review"
+        and st.session_state.get(f"decision-{r['question_id']}", r["reviewer_decision"]) == "Pending"
+    )
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Questions assessed", len(df))
     c2.metric("Supported", int(supported))
-    c3.metric("Needs human review", int(needs_review))
+    c3.metric("Awaiting human review", int(awaiting))
     c4.metric("Average confidence", f"{df.confidence.mean():.0f}%")
 
     # Apply review decisions before any tab renders, so the residual-risk summary is current.
@@ -336,6 +340,8 @@ else:
                 row["reviewer_decision"] = decision
                 st.session_state.audit.append({"timestamp_utc": datetime.now(timezone.utc).isoformat(),
                     "event": "review_decision", "question_id": row["question_id"], "decision": decision})
+            if decision != "Pending":
+                st.success(f"Saved: {decision}. The residual risk in the Vendor & risk tab now reflects this decision.")
             st.divider()
 
     with evaluation:
